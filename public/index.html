@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CF Log Viewer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>CF Log Viewer</h1>
+      <span id="app-name" class="app-badge"></span>
+    </div>
+    <div class="header-right">
+      <span id="log-count" class="stat">0 entries</span>
+      <button id="live-indicator" class="live-btn" title="Click to pause/resume live streaming">LIVE</button>
+    </div>
+  </header>
+
+  <div id="filter-bar">
+    <div class="filter-group">
+      <label for="filter-level">Level</label>
+      <select id="filter-level">
+        <option value="all">All Levels</option>
+        <option value="error">error</option>
+        <option value="warn">warn</option>
+        <option value="info">info</option>
+        <option value="debug">debug</option>
+        <option value="unknown">unknown</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filter-logger">Logger</label>
+      <input type="text" id="filter-logger" placeholder="e.g. cds-caching, sql...">
+    </div>
+    <div class="filter-group">
+      <label for="filter-correlation">Correlation ID</label>
+      <input type="text" id="filter-correlation" placeholder="Filter by correlation ID...">
+    </div>
+    <div class="filter-group filter-search">
+      <label for="filter-search">Search</label>
+      <input type="text" id="filter-search" placeholder="Free text search in messages...">
+    </div>
+    <div class="filter-group">
+      <button id="btn-clear-filters">Clear</button>
+    </div>
+    <div class="filter-group">
+      <button id="btn-download" title="Download filtered logs as JSON">Download JSON</button>
+    </div>
+    <div class="filter-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="auto-scroll" checked>
+        Auto-scroll
+      </label>
+    </div>
+  </div>
+
+  <div id="main-container">
+    <!-- Log table -->
+    <div id="table-panel">
+      <table id="log-table">
+        <thead>
+          <tr>
+            <th class="col-id">#</th>
+            <th class="col-timestamp">Timestamp</th>
+            <th class="col-level">Level</th>
+            <th class="col-source">Source</th>
+            <th class="col-logger">Logger</th>
+            <th class="col-message">Message</th>
+            <th class="col-correlation">Correlation</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody">
+        </tbody>
+      </table>
+      <div id="table-status">
+        <span id="showing-count"></span>
+        <button id="btn-load-more" style="display:none;">Load more...</button>
+      </div>
+    </div>
+
+    <!-- Detail panel (hidden by default) -->
+    <div id="detail-panel" class="hidden">
+      <div class="detail-header">
+        <h2>Log Entry <span id="detail-id"></span></h2>
+        <button id="btn-close-detail" title="Close">&times;</button>
+      </div>
+      <div id="detail-content">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

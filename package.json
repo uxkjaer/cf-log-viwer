@@ -1,0 +1,25 @@
+{
+  "name": "cf-log-viewer",
+  "version": "1.0.0",
+  "description": "A local web-based viewer for Cloud Foundry application logs with structured JSON parsing, filtering, and drill-down.",
+  "main": "lib/server.js",
+  "bin": {
+    "cf-log-viewer": "./bin/cf-log-viewer.js"
+  },
+  "scripts": {
+    "start": "node bin/cf-log-viewer.js"
+  },
+  "keywords": [
+    "cloud-foundry",
+    "cf",
+    "logs",
+    "viewer",
+    "cap",
+    "sap"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}
