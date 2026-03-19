@@ -1,4 +1,4 @@
-name: Build & Release
+name: Publish to npm
 
 on:
   push:
@@ -10,18 +10,25 @@ permissions:
   contents: write
 
 jobs:
-  tag:
+  publish:
     runs-on: ubuntu-latest
-    outputs:
-      new_tag: ${{ steps.bump.outputs.new_tag }}
-      skipped: ${{ steps.bump.outputs.skipped }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Bump version and create tag
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bump version and tag
         id: bump
         run: |
           # Get latest tag, default to v0.0.0 if none exists
@@ -36,104 +43,35 @@ jobs:
 
           # Bump patch
           PATCH=$((PATCH + 1))
-          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "New tag: $NEW_TAG"
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          NEW_TAG="v${NEW_VERSION}"
+          echo "New version: $NEW_VERSION"
 
-          # Check if HEAD already has this tag (avoid duplicate releases)
+          # Check if HEAD already has a tag
           HEAD_TAGS=$(git tag --points-at HEAD 2>/dev/null || true)
           if echo "$HEAD_TAGS" | grep -q "^v"; then
             echo "HEAD already tagged: $HEAD_TAGS"
             echo "skipped=true" >> "$GITHUB_OUTPUT"
-            echo "new_tag=$HEAD_TAGS" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "skipped=false" >> "$GITHUB_OUTPUT"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
 
-          # Create and push the tag
+          # Update package.json version
+          npm version "$NEW_VERSION" --no-git-tag-version
+
+          # Commit, tag, push
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Release $NEW_TAG"
           git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-          git push origin "$NEW_TAG"
+          git push origin main --follow-tags
 
-  build:
-    needs: tag
-    if: needs.tag.outputs.skipped != 'true'
-    strategy:
-      matrix:
-        include:
-          - target: bun-linux-x64
-            os: ubuntu-latest
-            artifact: cf-log-viewer-linux-x64
-          - target: bun-linux-arm64
-            os: ubuntu-latest
-            artifact: cf-log-viewer-linux-arm64
-          - target: bun-darwin-x64
-            os: macos-latest
-            artifact: cf-log-viewer-darwin-x64
-          - target: bun-darwin-arm64
-            os: macos-latest
-            artifact: cf-log-viewer-darwin-arm64
-          - target: bun-windows-x64
-            os: ubuntu-latest
-            artifact: cf-log-viewer-windows-x64.exe
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Build binary
-        run: |
-          mkdir -p dist
-          bun build bin/cf-log-viewer.js --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.artifact }}
-
-  release:
-    needs: [tag, build]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: List artifacts
-        run: find artifacts -type f
-
-      - name: Create checksums
-        run: |
-          cd artifacts
-          find . -type f -not -name '*.sha256' | while read f; do
-            sha256sum "$f" >> checksums.sha256
-          done
-          cat checksums.sha256
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.tag.outputs.new_tag }}
-          name: cf-log-viewer ${{ needs.tag.outputs.new_tag }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          files: |
-            artifacts/cf-log-viewer-linux-x64/cf-log-viewer-linux-x64
-            artifacts/cf-log-viewer-linux-arm64/cf-log-viewer-linux-arm64
-            artifacts/cf-log-viewer-darwin-x64/cf-log-viewer-darwin-x64
-            artifacts/cf-log-viewer-darwin-arm64/cf-log-viewer-darwin-arm64
-            artifacts/cf-log-viewer-windows-x64.exe/cf-log-viewer-windows-x64.exe
-            artifacts/checksums.sha256
+      - name: Publish to npm
+        if: steps.bump.outputs.skipped != 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

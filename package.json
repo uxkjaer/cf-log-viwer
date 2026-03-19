@@ -2,19 +2,18 @@
   "name": "cf-log-viewer",
   "version": "1.0.0",
   "description": "A local web-based viewer for Cloud Foundry application logs with structured JSON parsing, filtering, and drill-down.",
-  "main": "bin/cf-log-viewer.js",
+  "main": "lib/server.js",
   "bin": {
     "cf-log-viewer": "./bin/cf-log-viewer.js"
   },
   "scripts": {
-    "start": "bun run bin/cf-log-viewer.js",
-    "build": "bun build bin/cf-log-viewer.js --compile --outfile dist/cf-log-viewer",
-    "build:linux-x64": "bun build bin/cf-log-viewer.js --compile --target=bun-linux-x64 --outfile dist/cf-log-viewer-linux-x64",
-    "build:linux-arm64": "bun build bin/cf-log-viewer.js --compile --target=bun-linux-arm64 --outfile dist/cf-log-viewer-linux-arm64",
-    "build:darwin-x64": "bun build bin/cf-log-viewer.js --compile --target=bun-darwin-x64 --outfile dist/cf-log-viewer-darwin-x64",
-    "build:darwin-arm64": "bun build bin/cf-log-viewer.js --compile --target=bun-darwin-arm64 --outfile dist/cf-log-viewer-darwin-arm64",
-    "build:windows-x64": "bun build bin/cf-log-viewer.js --compile --target=bun-windows-x64 --outfile dist/cf-log-viewer-windows-x64.exe"
+    "start": "node bin/cf-log-viewer.js"
   },
+  "files": [
+    "bin/",
+    "lib/",
+    "public/"
+  ],
   "keywords": [
     "cloud-foundry",
     "cf",
@@ -22,7 +21,19 @@
     "viewer",
     "cap",
     "sap",
-    "bun"
+    "cli"
   ],
-  "license": "MIT"
+  "author": "uxkjaer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uxkjaer/cf-log-viwer.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
 }

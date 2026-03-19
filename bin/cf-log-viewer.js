@@ -1,16 +1,9 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 'use strict';
-
-import indexHtml from '../public/index.html' with { type: 'file' };
-import styleCss from '../public/style.css' with { type: 'file' };
-import appJs from '../public/app.js' with { type: 'file' };
 
 const { spawn, execSync } = require('child_process');
 const { parseOutput, parseLine } = require('../lib/parser');
 const { createServer } = require('../lib/server');
-
-// Embedded asset paths (resolved by Bun at build time for --compile)
-const embeddedAssets = { indexHtml, styleCss, appJs };
 
 // --- CLI argument parsing ---
 const args = process.argv.slice(2);
@@ -21,6 +14,7 @@ if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
 
   Usage:
     cf-log-viewer <app-name> [options]
+    npx cf-log-viewer <app-name> [options]
 
   Options:
     --live          Also tail live logs after fetching recent (default: recent only)
@@ -28,9 +22,9 @@ if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
     -h, --help      Show this help
 
   Examples:
-    cf-log-viewer my-app-srv              # fetch recent logs and show in browser
-    cf-log-viewer my-app-srv --live       # fetch recent + stream live logs
-    cf-log-viewer my-app-srv --no-open    # don't auto-open browser
+    npx cf-log-viewer my-app-srv              # fetch recent logs and show in browser
+    npx cf-log-viewer my-app-srv --live       # fetch recent + stream live logs
+    npx cf-log-viewer my-app-srv --no-open    # don't auto-open browser
   `);
   process.exit(0);
 }
@@ -56,7 +50,7 @@ async function main() {
   try {
     recentOutput = execSync(`cf logs ${appName} --recent`, {
       encoding: 'utf-8',
-      maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+      maxBuffer: 50 * 1024 * 1024,
       timeout: 60000
     });
   } catch (err) {
@@ -74,7 +68,7 @@ async function main() {
   console.log(`  Parsed ${initialLogs.length} log entries.`);
 
   // Step 3: Start server
-  const viewer = createServer({ initialLogs, appName, live: enableLive, assets: embeddedAssets });
+  const viewer = createServer({ initialLogs, appName, live: enableLive });
   const port = await viewer.start();
   const url = `http://127.0.0.1:${port}`;
 
@@ -111,7 +105,6 @@ async function main() {
     tail.stdout.on('data', (chunk) => {
       buffer += chunk.toString();
       const lines = buffer.split('\n');
-      // Keep the last partial line in the buffer
       buffer = lines.pop() || '';
 
       for (const line of lines) {
@@ -125,7 +118,6 @@ async function main() {
 
     tail.stderr.on('data', (chunk) => {
       const text = chunk.toString().trim();
-      // CF CLI writes "Connected, tailing logs..." to stderr, ignore that
       if (text && !text.includes('Connected') && !text.includes('tailing')) {
         console.error(`  cf stderr: ${text}`);
       }
@@ -141,7 +133,6 @@ async function main() {
       console.error(`  Failed to start live tail: ${err.message}`);
     });
 
-    // Clean shutdown
     process.on('SIGINT', () => {
       console.log('\n  Shutting down...');
       tail.kill('SIGTERM');
@@ -155,7 +146,6 @@ async function main() {
       process.exit(0);
     });
   } else {
-    // Default (recent-only) mode, just handle Ctrl+C
     process.on('SIGINT', () => {
       console.log('\n  Shutting down...');
       viewer.stop();
