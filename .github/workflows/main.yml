@@ -1,0 +1,104 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: bun-linux-x64
+            os: ubuntu-latest
+            artifact: cf-log-viewer-linux-x64
+          - target: bun-linux-arm64
+            os: ubuntu-latest
+            artifact: cf-log-viewer-linux-arm64
+          - target: bun-darwin-x64
+            os: macos-latest
+            artifact: cf-log-viewer-darwin-x64
+          - target: bun-darwin-arm64
+            os: macos-latest
+            artifact: cf-log-viewer-darwin-arm64
+          - target: bun-windows-x64
+            os: ubuntu-latest
+            artifact: cf-log-viewer-windows-x64.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build binary
+        run: |
+          mkdir -p dist
+          bun build bin/cf-log-viewer.js --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: List artifacts
+        run: find artifacts -type f | head -20
+
+      - name: Create checksums
+        run: |
+          cd artifacts
+          find . -type f -not -name '*.sha256' | while read f; do
+            sha256sum "$f" >> checksums.sha256
+          done
+          cat checksums.sha256
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: cf-log-viewer ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/cf-log-viewer-linux-x64/cf-log-viewer-linux-x64
+            artifacts/cf-log-viewer-linux-arm64/cf-log-viewer-linux-arm64
+            artifacts/cf-log-viewer-darwin-x64/cf-log-viewer-darwin-x64
+            artifacts/cf-log-viewer-darwin-arm64/cf-log-viewer-darwin-arm64
+            artifacts/cf-log-viewer-windows-x64.exe/cf-log-viewer-windows-x64.exe
+            artifacts/checksums.sha256
