@@ -1,9 +1,16 @@
 #!/usr/bin/env bun
 'use strict';
 
+import indexHtml from '../public/index.html' with { type: 'file' };
+import styleCss from '../public/style.css' with { type: 'file' };
+import appJs from '../public/app.js' with { type: 'file' };
+
 const { spawn, execSync } = require('child_process');
 const { parseOutput, parseLine } = require('../lib/parser');
 const { createServer } = require('../lib/server');
+
+// Embedded asset paths (resolved by Bun at build time for --compile)
+const embeddedAssets = { indexHtml, styleCss, appJs };
 
 // --- CLI argument parsing ---
 const args = process.argv.slice(2);
@@ -67,7 +74,7 @@ async function main() {
   console.log(`  Parsed ${initialLogs.length} log entries.`);
 
   // Step 3: Start server
-  const viewer = createServer({ initialLogs, appName, live: enableLive });
+  const viewer = createServer({ initialLogs, appName, live: enableLive, assets: embeddedAssets });
   const port = await viewer.start();
   const url = `http://127.0.0.1:${port}`;
 
