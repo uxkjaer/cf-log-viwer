@@ -1,6 +1,6 @@
 {
   "name": "cf-log-viewer",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "A local web-based viewer for Cloud Foundry application logs with structured JSON parsing, filtering, and drill-down.",
   "main": "lib/server.js",
   "bin": {
