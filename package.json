@@ -7,7 +7,8 @@
     "cf-log-viewer": "./bin/cf-log-viewer.js"
   },
   "scripts": {
-    "start": "node bin/cf-log-viewer.js"
+    "start": "node bin/cf-log-viewer.js",
+    "test": "npx playwright test"
   },
   "files": [
     "bin/",
@@ -35,5 +36,8 @@
   "dependencies": {
     "express": "^4.21.0",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   }
 }

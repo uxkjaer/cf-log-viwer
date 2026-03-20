@@ -8,6 +8,7 @@
 const state = {
   entries: [],        // All log entries loaded so far
   filtered: [],       // Current filtered view
+  renderedCount: 0,   // How many rows from state.filtered are rendered in the DOM
   selectedId: null,   // Currently selected entry ID
   totalOnServer: 0,
   autoScroll: true,
@@ -285,6 +286,7 @@ function clearFilters() {
 
 function renderTable() {
   dom.tbody.innerHTML = '';
+  state.renderedCount = 0;
 
   if (state.filtered.length === 0) {
     dom.tbody.innerHTML = `
@@ -296,6 +298,7 @@ function renderTable() {
           </div>
         </td>
       </tr>`;
+    updateLoadMoreButton();
     return;
   }
 
@@ -308,30 +311,33 @@ function renderTable() {
   }
 
   dom.tbody.appendChild(fragment);
-
-  // Show "load more" if there are more entries
-  if (state.filtered.length > RENDER_BATCH_SIZE) {
-    dom.btnLoadMore.style.display = 'inline-block';
-    dom.btnLoadMore.textContent = `Load more (${state.filtered.length - end} remaining)`;
-  } else {
-    dom.btnLoadMore.style.display = 'none';
-  }
+  state.renderedCount = end;
+  updateLoadMoreButton();
 }
 
 function loadMoreRows() {
-  const currentCount = dom.tbody.children.length;
-  const end = Math.min(state.filtered.length, currentCount + RENDER_BATCH_SIZE);
+  const start = state.renderedCount;
+  const end = Math.min(state.filtered.length, start + RENDER_BATCH_SIZE);
+
+  if (start >= end) return;
 
   const fragment = document.createDocumentFragment();
-  for (let i = currentCount; i < end; i++) {
+  for (let i = start; i < end; i++) {
     fragment.appendChild(createRow(state.filtered[i]));
   }
   dom.tbody.appendChild(fragment);
+  state.renderedCount = end;
+  updateLoadMoreButton();
+  updateCounts();
+}
 
-  if (end >= state.filtered.length) {
-    dom.btnLoadMore.style.display = 'none';
+function updateLoadMoreButton() {
+  const remaining = state.filtered.length - state.renderedCount;
+  if (remaining > 0) {
+    dom.btnLoadMore.style.display = 'inline-block';
+    dom.btnLoadMore.textContent = `Load more (${remaining} remaining)`;
   } else {
-    dom.btnLoadMore.textContent = `Load more (${state.filtered.length - end} remaining)`;
+    dom.btnLoadMore.style.display = 'none';
   }
 }
 
@@ -377,6 +383,8 @@ function appendRow(entry, isNew = false) {
     tr.classList.add('new-entry');
   }
   dom.tbody.appendChild(tr);
+  state.renderedCount++;
+  updateLoadMoreButton();
 }
 
 function scrollToBottom() {
@@ -544,7 +552,14 @@ function downloadFilteredLogs() {
 
 function updateCounts() {
   dom.logCount.textContent = `${state.entries.length} entries`;
-  dom.showingCount.textContent = `Showing ${state.filtered.length} of ${state.entries.length} entries`;
+  const rendered = state.renderedCount;
+  const filtered = state.filtered.length;
+  const total = state.entries.length;
+  if (rendered < filtered) {
+    dom.showingCount.textContent = `Showing ${rendered} of ${filtered} matching (${total} total)`;
+  } else {
+    dom.showingCount.textContent = `Showing ${filtered} of ${total} entries`;
+  }
 }
 
 function formatTimestamp(ts) {
